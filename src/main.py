@@ -186,7 +186,10 @@ class PongGame:
             self.sound.play_bounce()
 
         # Paddle collisions
-        if self.ball.check_paddle_collision(self.paddle1):
+        if (
+            self.ball.check_paddle_collision(self.paddle1)
+            or self.ball.check_paddle_collision(self.paddle2)
+        ):
             self.sound.play_wall()
 
         # Scoring / out-of-bounds check
