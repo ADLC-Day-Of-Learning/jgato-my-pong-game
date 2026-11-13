@@ -315,3 +315,51 @@ def test_game_paddle2_collision():
     # Ball horizontal velocity should be inverted and repositioned to paddle face
     assert game.ball.speed_x < 0
     assert game.ball.x <= float(game.paddle2.rect.left - game.ball.size)
+
+
+def test_game_start_game_propagates_acceleration_mode():
+    """Verify start_game propagates acceleration toggle from menu to ball."""
+    # Disabled by default
+    game = PongGame(headless=True, sound_enabled=False)
+    assert game.ball.acceleration_enabled is False
+    game.start_game()
+    assert game.ball.acceleration_enabled is False
+
+    # Enabled
+    game_enabled = PongGame(headless=True, sound_enabled=False)
+    game_enabled.menu.acceleration_enabled = True
+    game_enabled.start_game()
+    assert game_enabled.ball.acceleration_enabled is True
+
+
+def test_game_acceleration_scoring_resets_speed_and_preserves_mode():
+    """Verify scoring resets ball speed while maintaining acceleration mode for next rally."""
+    game = PongGame(headless=True, sound_enabled=False)
+    game.menu.acceleration_enabled = True
+    game.start_game()
+    assert game.ball.acceleration_enabled is True
+    initial_speed = game.ball.current_speed
+
+    # Ball hits paddle1 in game loop
+    game.ball.x = game.paddle1.rect.right - 2
+    game.ball.y = game.paddle1.y + (game.paddle1.height - game.ball.size) / 2.0
+    game.ball.speed_x = -5.0
+    game.ball.speed_y = 5.0
+    game.update()
+    assert game.ball.current_speed > initial_speed
+
+    # Player 1 scores point -> ball resets
+    game.ball.x = game.screen_width + 10
+    game.update()
+    assert game.score.player1_score == 1
+    assert abs(game.ball.current_speed - initial_speed) < 1e-5
+    assert game.ball.acceleration_enabled is True
+
+    # Next rally return accelerates ball again
+    game.ball.x = game.paddle2.x - game.ball.size + 2
+    game.ball.y = game.paddle2.y + (game.paddle2.height - game.ball.size) / 2.0
+    game.ball.speed_x = 5.0
+    game.ball.speed_y = 5.0
+    speed_before = game.ball.current_speed
+    game.update()
+    assert game.ball.current_speed > speed_before

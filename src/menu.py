@@ -13,6 +13,7 @@ from src.constants import (
     FONT_SIZE_SMALL,
     FONT_SIZE_TITLE,
     GRAY,
+    GREEN,
     LIGHT_GRAY,
     PADDLE_WIDTH,
     RED,
@@ -34,6 +35,7 @@ class Menu:
         player2_name: str = "",
         player1_color: tuple[int, int, int] = RED,
         player2_color: tuple[int, int, int] = BLUE,
+        acceleration_enabled: bool = False,
     ):
         self.screen_width = screen_width
         self.screen_height = screen_height
@@ -42,6 +44,7 @@ class Menu:
         self.player2_name = player2_name
         self.player1_color = player1_color
         self.player2_color = player2_color
+        self.acceleration_enabled = bool(acceleration_enabled)
 
         # Active input field: None, "player1_name", "player2_name"
         self.active_field: str | None = None
@@ -80,6 +83,13 @@ class Menu:
                 col2_x + offset_x, 290, btn_width, btn_height
             )
 
+        # Acceleration toggle button (centered between previews above start button)
+        toggle_w = 260
+        toggle_h = 32
+        self.acceleration_toggle_rect = pygame.Rect(
+            (self.screen_width - toggle_w) // 2, 442, toggle_w, toggle_h
+        )
+
         # Start game button (centered at bottom)
         start_btn_w = 220
         start_btn_h = 48
@@ -91,6 +101,10 @@ class Menu:
         """Reset UI interaction states (active field and start flag)."""
         self.active_field = None
         self.start_requested = False
+
+    def toggle_acceleration(self) -> None:
+        """Toggle gradual ball acceleration on or off."""
+        self.acceleration_enabled = not self.acceleration_enabled
 
     def get_player_name(self, player: int) -> str:
         """Return the trimmed player name or default if empty."""
@@ -184,6 +198,10 @@ class Menu:
                 if rect.collidepoint(mouse_pos):
                     self.player2_color = RGB_COLORS[name]
 
+            # Check Acceleration toggle button
+            if self.acceleration_toggle_rect.collidepoint(mouse_pos):
+                self.toggle_acceleration()
+
             # Check Start Game button
             if self.start_button_rect.collidepoint(mouse_pos):
                 self.start_requested = True
@@ -195,6 +213,8 @@ class Menu:
             ):
                 self.start_requested = True
                 return True
+            elif self.active_field is None and event.key == pygame.K_a:
+                self.toggle_acceleration()
             elif event.key == pygame.K_TAB:
                 # Cycle focus between player 1 and player 2 input boxes
                 if self.active_field == "player1_name":
@@ -272,6 +292,29 @@ class Menu:
             preview_y=350,
         )
 
+        # Acceleration Toggle Button
+        toggle_color = DARK_GRAY
+        border_color = GREEN if self.acceleration_enabled else GRAY
+        pygame.draw.rect(
+            surface, toggle_color, self.acceleration_toggle_rect, border_radius=4
+        )
+        pygame.draw.rect(
+            surface, border_color, self.acceleration_toggle_rect, width=2, border_radius=4
+        )
+
+        if self.small_font is not None:
+            status_text = "ON" if self.acceleration_enabled else "OFF"
+            status_color = GREEN if self.acceleration_enabled else LIGHT_GRAY
+            toggle_label = f"Gradual Acceleration: {status_text}"
+            toggle_surf = self.small_font.render(toggle_label, True, status_color)
+            surface.blit(
+                toggle_surf,
+                (
+                    self.acceleration_toggle_rect.centerx - toggle_surf.get_width() // 2,
+                    self.acceleration_toggle_rect.centery - toggle_surf.get_height() // 2,
+                ),
+            )
+
         # Start Game Button
         btn_color = DARK_GRAY
         pygame.draw.rect(surface, btn_color, self.start_button_rect, border_radius=6)
@@ -292,7 +335,7 @@ class Menu:
         # Footer Hint
         if self.small_font is not None:
             hint_surf = self.small_font.render(
-                "Click or TAB to edit names  •  Select RGB color  •  Press ENTER to Play",
+                "Click or TAB to edit names  •  Toggle Acceleration  •  Press ENTER to Play",
                 True,
                 GRAY,
             )

@@ -73,6 +73,7 @@ ruff check .
 #### Main Menu
 - **Edit Names:** Click on text box or press `TAB` to switch fields, type custom name (defaults to "Player 1" / "Player 2" if left blank)
 - **Select Paddle Color:** Click on `Red`, `Green`, or `Blue` buttons for either player
+- **Toggle Gradual Acceleration:** Click the `Gradual Acceleration` button or press `A` (when no text field is focused) to turn gradual ball acceleration on or off
 - **Start Game:** Click `START GAME` or press `ENTER` / `SPACE`
 
 #### In-Game
