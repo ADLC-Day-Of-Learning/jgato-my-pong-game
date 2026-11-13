@@ -56,6 +56,11 @@ class Ball:
         return math.hypot(self.speed_x, self.speed_y)
 
     @property
+    def max_scalar_speed(self) -> float:
+        """Return the maximum achievable scalar speed of the ball."""
+        return math.hypot(self.max_speed, self.max_speed)
+
+    @property
     def rect(self) -> pygame.Rect:
         """Returns the current pygame.Rect bounding box for the ball."""
         return pygame.Rect(int(self.x), int(self.y), self.size, self.size)
@@ -141,15 +146,31 @@ class Ball:
             self.speed_y = self.max_speed if self.speed_y > 0 else -self.max_speed
 
         if self.acceleration_enabled:
-            current_scalar_speed = self.current_speed
-            target_speed = max(
-                current_scalar_speed, speed_before + self.acceleration_increment
-            )
-            target_speed = min(target_speed, self.max_speed)
-            if current_scalar_speed > 0:
-                scale = target_speed / current_scalar_speed
+            post_deflection_speed = self.current_speed
+            target_speed = max(post_deflection_speed, speed_before) + self.acceleration_increment
+            target_speed = min(target_speed, self.max_scalar_speed)
+            if post_deflection_speed > 0:
+                scale = target_speed / post_deflection_speed
                 self.speed_x *= scale
                 self.speed_y *= scale
+
+                # Horizontal velocity must not exceed max_speed to prevent tunneling.
+                # Transfer remaining magnitude to speed_y so total target_speed is preserved.
+                if abs(self.speed_x) > self.max_speed:
+                    self.speed_x = self.max_speed if self.speed_x > 0 else -self.max_speed
+                    remaining_sq = max(0.0, target_speed**2 - self.speed_x**2)
+                    new_speed_y = min(math.sqrt(remaining_sq), self.max_speed)
+                    self.speed_y = new_speed_y if self.speed_y >= 0 else -new_speed_y
+                elif abs(self.speed_y) > self.max_speed:
+                    self.speed_y = self.max_speed if self.speed_y > 0 else -self.max_speed
+                    remaining_sq = max(0.0, target_speed**2 - self.speed_y**2)
+                    new_speed_x = min(math.sqrt(remaining_sq), self.max_speed)
+                    self.speed_x = new_speed_x if self.speed_x >= 0 else -new_speed_x
+
+                if abs(self.speed_x) > self.max_speed:
+                    self.speed_x = self.max_speed if self.speed_x > 0 else -self.max_speed
+                if abs(self.speed_y) > self.max_speed:
+                    self.speed_y = self.max_speed if self.speed_y > 0 else -self.max_speed
 
         return True
 
