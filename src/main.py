@@ -90,7 +90,9 @@ class PongGame:
 
         # Initialize ball and scoreboard
         self.ball = Ball(
-            screen_width=self.screen_width, screen_height=self.screen_height
+            screen_width=self.screen_width,
+            screen_height=self.screen_height,
+            acceleration_enabled=self.menu.acceleration_enabled,
         )
         self.score = Score(
             screen_width=self.screen_width,
@@ -124,6 +126,7 @@ class PongGame:
         self.score.set_player_name(2, self.menu.get_player_name(2))
         self.paddle1.color = self.menu.get_paddle_color(1)
         self.paddle2.color = self.menu.get_paddle_color(2)
+        self.ball.acceleration_enabled = self.menu.acceleration_enabled
         self.menu.reset()
         self.state = "playing"
 

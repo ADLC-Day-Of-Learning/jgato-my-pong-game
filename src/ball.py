@@ -7,6 +7,7 @@ import math
 import pygame
 
 from src.constants import (
+    BALL_ACCELERATION_INCREMENT,
     BALL_INITIAL_SPEED_X,
     BALL_INITIAL_SPEED_Y,
     BALL_MAX_SPEED,
@@ -31,6 +32,8 @@ class Ball:
         initial_speed_y: float = BALL_INITIAL_SPEED_Y,
         speed_increment: float = BALL_SPEED_INCREMENT,
         max_speed: float = BALL_MAX_SPEED,
+        acceleration_enabled: bool = False,
+        acceleration_increment: float = BALL_ACCELERATION_INCREMENT,
     ):
         self.screen_width = screen_width
         self.screen_height = screen_height
@@ -39,6 +42,8 @@ class Ball:
         self.initial_speed_y = float(initial_speed_y)
         self.speed_increment = float(speed_increment)
         self.max_speed = float(max_speed)
+        self.acceleration_enabled = bool(acceleration_enabled)
+        self.acceleration_increment = float(acceleration_increment)
 
         self.x = (self.screen_width - self.size) / 2.0
         self.y = (self.screen_height - self.size) / 2.0
@@ -105,6 +110,8 @@ class Ball:
 
         is_left = paddle.rect.centerx < self.screen_width / 2
 
+        speed_before = self.current_speed
+
         if is_left:
             if self.speed_x >= 0 or self.x < paddle.x:
                 return False
@@ -132,6 +139,17 @@ class Ball:
             self.speed_y = 1.0 if self.speed_y >= 0 else -1.0
         if abs(self.speed_y) > self.max_speed:
             self.speed_y = self.max_speed if self.speed_y > 0 else -self.max_speed
+
+        if self.acceleration_enabled:
+            current_scalar_speed = self.current_speed
+            target_speed = max(
+                current_scalar_speed, speed_before + self.acceleration_increment
+            )
+            target_speed = min(target_speed, self.max_speed)
+            if current_scalar_speed > 0:
+                scale = target_speed / current_scalar_speed
+                self.speed_x *= scale
+                self.speed_y *= scale
 
         return True
 

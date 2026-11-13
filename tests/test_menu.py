@@ -190,3 +190,86 @@ def test_menu_reset():
     menu.reset()
     assert menu.active_field is None
     assert menu.start_requested is False
+
+
+def test_menu_acceleration_toggle_defaults_off():
+    """Verify gradual acceleration toggle is off by default."""
+    menu = Menu()
+    assert menu.acceleration_enabled is False
+
+
+def test_menu_acceleration_toggle_mouse_click():
+    """Verify clicking the acceleration toggle button flips its state."""
+    menu = Menu()
+    assert menu.acceleration_enabled is False
+
+    click_pos = (
+        menu.acceleration_toggle_rect.centerx,
+        menu.acceleration_toggle_rect.centery,
+    )
+    # First click enables acceleration
+    menu.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=click_pos))
+    assert menu.acceleration_enabled is True
+
+    # Second click disables acceleration
+    menu.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=click_pos))
+    assert menu.acceleration_enabled is False
+
+
+def test_menu_acceleration_toggle_keyboard_shortcut():
+    """Verify pressing 'A' toggles acceleration only when no text field is focused."""
+    menu = Menu()
+    assert menu.acceleration_enabled is False
+
+    # Press 'A' with no active field -> toggles to True
+    menu.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a))
+    assert menu.acceleration_enabled is True
+
+    # Press 'A' again -> toggles to False
+    menu.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a))
+    assert menu.acceleration_enabled is False
+
+    # Focus player1_name field and press 'A' -> types 'A', does not toggle
+    menu.active_field = "player1_name"
+    menu.handle_event(
+        pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a, unicode="A")
+    )
+    assert menu.acceleration_enabled is False
+    assert menu.player1_name == "A"
+
+
+def test_menu_acceleration_toggle_rendering():
+    """Verify acceleration toggle button renders with visual status text."""
+    surface = pygame.Surface((800, 600))
+    menu = Menu(acceleration_enabled=False)
+    menu.draw(surface)
+
+    # Check that toggle button area contains non-black pixels
+    has_toggle_pixels = any(
+        surface.get_at((x, menu.acceleration_toggle_rect.centery))[:3] != (0, 0, 0)
+        for x in range(
+            menu.acceleration_toggle_rect.left, menu.acceleration_toggle_rect.right
+        )
+    )
+    assert has_toggle_pixels
+
+    # Draw in enabled state
+    menu.toggle_acceleration()
+    menu.draw(surface)
+    has_enabled_pixels = any(
+        surface.get_at((x, menu.acceleration_toggle_rect.centery))[:3] != (0, 0, 0)
+        for x in range(
+            menu.acceleration_toggle_rect.left, menu.acceleration_toggle_rect.right
+        )
+    )
+    assert has_enabled_pixels
+
+
+def test_menu_reset_preserves_acceleration_choice():
+    """Verify menu reset preserves user acceleration preference."""
+    menu = Menu()
+    menu.toggle_acceleration()
+    assert menu.acceleration_enabled is True
+
+    menu.reset()
+    assert menu.acceleration_enabled is True

@@ -4,8 +4,10 @@ import math
 
 from src.ball import Ball
 from src.constants import (
+    BALL_ACCELERATION_INCREMENT,
     BALL_INITIAL_SPEED_X,
     BALL_INITIAL_SPEED_Y,
+    BALL_MAX_SPEED,
 )
 from src.paddle import Paddle
 
@@ -223,3 +225,97 @@ def test_ball_current_speed_paddle_collision_and_reset():
     # Resetting the ball restores the initial scalar speed
     ball.reset()
     assert math.isclose(ball.current_speed, expected_initial, rel_tol=1e-5)
+
+
+def test_ball_gradual_acceleration_defaults_disabled():
+    """Verify that gradual acceleration is disabled by default on Ball."""
+    ball = Ball()
+    assert ball.acceleration_enabled is False
+    assert ball.acceleration_increment == BALL_ACCELERATION_INCREMENT
+
+
+def test_ball_paddle_collision_acceleration_enabled_both_paddles():
+    """Verify both paddles increase total scalar speed when acceleration is enabled."""
+    # Test Left Paddle with center contact (shallow deflection would otherwise lower speed)
+    ball_left = Ball(acceleration_enabled=True)
+    left_paddle = Paddle(x=30, y=250, width=15, height=100)
+    # Position ball moving left, hitting center of left paddle
+    ball_left.x = 35
+    ball_left.y = 250 + (100 - ball_left.size) / 2.0
+    ball_left.speed_x = -5.0
+    ball_left.speed_y = 5.0
+    speed_before_left = ball_left.current_speed
+
+    assert ball_left.check_paddle_collision(left_paddle) is True
+    assert ball_left.speed_x > 0
+    assert ball_left.current_speed > speed_before_left
+    assert ball_left.current_speed <= BALL_MAX_SPEED
+
+    # Test Right Paddle with center contact
+    ball_right = Ball(acceleration_enabled=True)
+    right_paddle = Paddle(x=750, y=250, width=15, height=100)
+    # Position ball moving right, hitting center of right paddle
+    ball_right.x = 745
+    ball_right.y = 250 + (100 - ball_right.size) / 2.0
+    ball_right.speed_x = 5.0
+    ball_right.speed_y = 5.0
+    speed_before_right = ball_right.current_speed
+
+    assert ball_right.check_paddle_collision(right_paddle) is True
+    assert ball_right.speed_x < 0
+    assert ball_right.current_speed > speed_before_right
+    assert ball_right.current_speed <= BALL_MAX_SPEED
+
+
+def test_ball_paddle_collision_acceleration_max_speed_cap():
+    """Verify total scalar speed is capped at BALL_MAX_SPEED when acceleration is enabled."""
+    ball = Ball(
+        acceleration_enabled=True,
+        initial_speed_x=14.9,
+        initial_speed_y=1.0,
+        max_speed=15.0,
+    )
+    paddle = Paddle(x=30, y=250, width=15, height=100)
+    ball.x = 35
+    ball.y = 250 + (100 - ball.size) / 2.0
+    ball.speed_x = -14.9
+    ball.speed_y = 1.0
+
+    assert ball.check_paddle_collision(paddle) is True
+    assert ball.current_speed <= 15.0
+    assert math.isclose(ball.current_speed, 15.0, rel_tol=1e-5)
+
+
+def test_ball_acceleration_disabled_preserves_existing_behavior():
+    """Verify that disabled acceleration retains standard deflection without guaranteed speedup."""
+    # With disabled mode and center paddle contact, vertical velocity drops to 1.0,
+    # lowering total scalar speed below initial hypot(5, 5).
+    ball = Ball(acceleration_enabled=False)
+    paddle = Paddle(x=30, y=250, width=15, height=100)
+    ball.x = 35
+    ball.y = 250 + (100 - ball.size) / 2.0  # exact center hit -> offset = 0
+    ball.speed_x = -5.0
+    ball.speed_y = 5.0
+    speed_before = ball.current_speed  # ~7.071
+
+    assert ball.check_paddle_collision(paddle) is True
+    # In disabled mode, horizontal speed = 5.0 * 1.05 = 5.25, vertical = 1.0 -> current ~5.34
+    assert ball.current_speed < speed_before
+
+
+def test_ball_reset_restores_speed_when_acceleration_enabled():
+    """Verify scoring reset restores initial ball speed when acceleration is enabled."""
+    ball = Ball(acceleration_enabled=True)
+    initial_speed = ball.current_speed
+
+    paddle = Paddle(x=30, y=250, width=15, height=100)
+    ball.x = 35
+    ball.y = 280
+    ball.speed_x = -5.0
+    ball.check_paddle_collision(paddle)
+    assert ball.current_speed > initial_speed
+
+    # Reset after scoring
+    ball.reset(direction=1)
+    assert math.isclose(ball.current_speed, initial_speed, rel_tol=1e-5)
+    assert ball.acceleration_enabled is True
