@@ -330,7 +330,7 @@ def test_ball_max_scalar_speed_property():
     assert math.isclose(ball.max_scalar_speed, expected, rel_tol=1e-5)
 
 
-def test_acceleration_strictly_faster_than_standard_across_offsets():
+def test_ball_acceleration_strictly_faster_than_standard_across_offsets():
     """Verify acceleration mode produces higher speed than disabled mode across all offsets."""
     paddle = Paddle(x=30, y=250, width=15, height=100)
     for offset_ratio in [-1.0, -0.8, -0.5, -0.3, 0.0, 0.3, 0.5, 0.8, 1.0]:
@@ -361,7 +361,7 @@ def test_acceleration_strictly_faster_than_standard_across_offsets():
         assert ball_enabled.current_speed > ball_disabled.current_speed
 
 
-def test_acceleration_strictly_faster_on_shallow_and_steep_returns():
+def test_ball_acceleration_strictly_faster_on_shallow_and_steep_returns():
     """Verify shallow (0.0) and steep (1.0) returns are strictly faster with acceleration."""
     paddle = Paddle(x=30, y=250, width=15, height=100)
     for offset_ratio in [0.0, 1.0]:
@@ -392,7 +392,7 @@ def test_acceleration_strictly_faster_on_shallow_and_steep_returns():
         assert ball_enabled.current_speed > ball_disabled.current_speed
 
 
-def test_acceleration_top_speed_ceiling_not_inverted():
+def test_ball_acceleration_top_speed_ceiling_not_inverted():
     """Verify maximum speed ceiling in acceleration mode is >= disabled mode."""
     paddle = Paddle(x=30, y=250, width=15, height=100)
     ball_disabled = Ball(acceleration_enabled=False, initial_speed_x=15.0, initial_speed_y=15.0)
@@ -411,3 +411,39 @@ def test_acceleration_top_speed_ceiling_not_inverted():
 
     assert ball_enabled.current_speed >= ball_disabled.current_speed
     assert abs(ball_enabled.speed_x) >= abs(ball_disabled.speed_x)
+    assert abs(ball_enabled.speed_x) <= ball_enabled.max_speed
+
+
+def test_ball_acceleration_no_paddle_tunneling_at_max_speed():
+    """Verify ball does not tunnel through paddle when approaching at max speed."""
+    left_paddle = Paddle(x=30, y=250, width=15, height=100)
+    ball_left = Ball(acceleration_enabled=True, max_speed=15.0)
+    ball_left.x = float(left_paddle.rect.right) + 1.0
+    ball_left.y = left_paddle.y + (left_paddle.height - ball_left.size) / 2.0
+    ball_left.speed_x = -ball_left.max_speed
+    ball_left.speed_y = 0.0
+
+    assert not ball_left.rect.colliderect(left_paddle.rect)
+
+    ball_left.update()
+
+    assert ball_left.check_paddle_collision(left_paddle) is True
+    assert ball_left.speed_x > 0
+    assert ball_left.x == float(left_paddle.rect.right)
+    assert abs(ball_left.speed_x) <= ball_left.max_speed
+
+    right_paddle = Paddle(x=755, y=250, width=15, height=100)
+    ball_right = Ball(acceleration_enabled=True, max_speed=15.0)
+    ball_right.x = float(right_paddle.rect.left - ball_right.size) - 1.0
+    ball_right.y = right_paddle.y + (right_paddle.height - ball_right.size) / 2.0
+    ball_right.speed_x = ball_right.max_speed
+    ball_right.speed_y = 0.0
+
+    assert not ball_right.rect.colliderect(right_paddle.rect)
+
+    ball_right.update()
+
+    assert ball_right.check_paddle_collision(right_paddle) is True
+    assert ball_right.speed_x < 0
+    assert ball_right.x == float(right_paddle.rect.left - ball_right.size)
+    assert abs(ball_right.speed_x) <= ball_right.max_speed

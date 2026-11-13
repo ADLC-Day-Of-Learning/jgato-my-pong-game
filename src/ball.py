@@ -151,8 +151,16 @@ class Ball:
             target_speed = min(target_speed, self.max_scalar_speed)
             if post_deflection_speed > 0:
                 scale = target_speed / post_deflection_speed
+                if abs(self.speed_x) > 0:
+                    scale = min(scale, self.max_speed / abs(self.speed_x))
+                if abs(self.speed_y) > 0:
+                    scale = min(scale, self.max_speed / abs(self.speed_y))
                 self.speed_x *= scale
                 self.speed_y *= scale
+                if abs(self.speed_x) > self.max_speed:
+                    self.speed_x = self.max_speed if self.speed_x > 0 else -self.max_speed
+                if abs(self.speed_y) > self.max_speed:
+                    self.speed_y = self.max_speed if self.speed_y > 0 else -self.max_speed
 
         return True
 
