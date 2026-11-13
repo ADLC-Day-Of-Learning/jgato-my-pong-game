@@ -281,3 +281,37 @@ def test_game_speedometer_rendering_and_state_resets():
     assert game.ball.current_speed > initial_speed
     game.restart()
     assert abs(game.ball.current_speed - initial_speed) < 1e-5
+
+
+def test_game_paddle1_collision():
+    """Verify ball deflects off paddle1 in game update loop."""
+    game = PongGame(headless=True, sound_enabled=False)
+    game.start_game()
+
+    # Position ball moving left and intersecting paddle1
+    game.ball.x = game.paddle1.rect.right - 2
+    game.ball.y = game.paddle1.y + 10
+    game.ball.speed_x = -5.0
+
+    game.update()
+
+    # Ball horizontal velocity should be inverted and repositioned to paddle face
+    assert game.ball.speed_x > 0
+    assert game.ball.x >= float(game.paddle1.rect.right)
+
+
+def test_game_paddle2_collision():
+    """Verify ball deflects off paddle2 in game update loop."""
+    game = PongGame(headless=True, sound_enabled=False)
+    game.start_game()
+
+    # Position ball moving right and intersecting paddle2
+    game.ball.x = game.paddle2.x - game.ball.size + 2
+    game.ball.y = game.paddle2.y + 10
+    game.ball.speed_x = 5.0
+
+    game.update()
+
+    # Ball horizontal velocity should be inverted and repositioned to paddle face
+    assert game.ball.speed_x < 0
+    assert game.ball.x <= float(game.paddle2.rect.left - game.ball.size)
