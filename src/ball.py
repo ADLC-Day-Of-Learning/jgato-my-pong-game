@@ -151,12 +151,22 @@ class Ball:
             target_speed = min(target_speed, self.max_scalar_speed)
             if post_deflection_speed > 0:
                 scale = target_speed / post_deflection_speed
-                if abs(self.speed_x) > 0:
-                    scale = min(scale, self.max_speed / abs(self.speed_x))
-                if abs(self.speed_y) > 0:
-                    scale = min(scale, self.max_speed / abs(self.speed_y))
                 self.speed_x *= scale
                 self.speed_y *= scale
+
+                # Horizontal velocity must not exceed max_speed to prevent tunneling.
+                # Transfer remaining magnitude to speed_y so total target_speed is preserved.
+                if abs(self.speed_x) > self.max_speed:
+                    self.speed_x = self.max_speed if self.speed_x > 0 else -self.max_speed
+                    remaining_sq = max(0.0, target_speed**2 - self.speed_x**2)
+                    new_speed_y = min(math.sqrt(remaining_sq), self.max_speed)
+                    self.speed_y = new_speed_y if self.speed_y >= 0 else -new_speed_y
+                elif abs(self.speed_y) > self.max_speed:
+                    self.speed_y = self.max_speed if self.speed_y > 0 else -self.max_speed
+                    remaining_sq = max(0.0, target_speed**2 - self.speed_y**2)
+                    new_speed_x = min(math.sqrt(remaining_sq), self.max_speed)
+                    self.speed_x = new_speed_x if self.speed_x >= 0 else -new_speed_x
+
                 if abs(self.speed_x) > self.max_speed:
                     self.speed_x = self.max_speed if self.speed_x > 0 else -self.max_speed
                 if abs(self.speed_y) > self.max_speed:

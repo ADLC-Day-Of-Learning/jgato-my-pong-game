@@ -364,32 +364,54 @@ def test_ball_acceleration_strictly_faster_than_standard_across_offsets():
 def test_ball_acceleration_strictly_faster_on_shallow_and_steep_returns():
     """Verify shallow (0.0) and steep (1.0) returns are strictly faster with acceleration."""
     paddle = Paddle(x=30, y=250, width=15, height=100)
-    for offset_ratio in [0.0, 1.0]:
-        ball_disabled = Ball(acceleration_enabled=False, initial_speed_x=6.0, initial_speed_y=4.0)
-        ball_disabled.x = 35
-        ball_disabled.y = (
-            paddle.y
-            + (paddle.height / 2.0)
-            + (offset_ratio * paddle.height / 2.0)
-            - (ball_disabled.size / 2.0)
-        )
-        ball_disabled.speed_x = -6.0
-        ball_disabled.speed_y = 4.0
-        assert ball_disabled.check_paddle_collision(paddle) is True
+    trajectories = [
+        (6.0, 4.0),
+        (15.0, 1.0),
+        (15.0, 4.0),
+    ]
+    for init_x, init_y in trajectories:
+        for offset_ratio in [0.0, 1.0]:
+            ball_disabled = Ball(
+                acceleration_enabled=False, initial_speed_x=init_x, initial_speed_y=init_y
+            )
+            ball_disabled.x = 35
+            ball_disabled.y = (
+                paddle.y
+                + (paddle.height / 2.0)
+                + (offset_ratio * paddle.height / 2.0)
+                - (ball_disabled.size / 2.0)
+            )
+            ball_disabled.speed_x = -init_x
+            ball_disabled.speed_y = init_y
+            speed_before = ball_disabled.current_speed
+            assert ball_disabled.check_paddle_collision(paddle) is True
 
-        ball_enabled = Ball(acceleration_enabled=True, initial_speed_x=6.0, initial_speed_y=4.0)
-        ball_enabled.x = 35
-        ball_enabled.y = (
-            paddle.y
-            + (paddle.height / 2.0)
-            + (offset_ratio * paddle.height / 2.0)
-            - (ball_enabled.size / 2.0)
-        )
-        ball_enabled.speed_x = -6.0
-        ball_enabled.speed_y = 4.0
-        assert ball_enabled.check_paddle_collision(paddle) is True
+            ball_enabled = Ball(
+                acceleration_enabled=True, initial_speed_x=init_x, initial_speed_y=init_y
+            )
+            ball_enabled.x = 35
+            ball_enabled.y = (
+                paddle.y
+                + (paddle.height / 2.0)
+                + (offset_ratio * paddle.height / 2.0)
+                - (ball_enabled.size / 2.0)
+            )
+            ball_enabled.speed_x = -init_x
+            ball_enabled.speed_y = init_y
+            assert ball_enabled.check_paddle_collision(paddle) is True
 
-        assert ball_enabled.current_speed > ball_disabled.current_speed
+            if ball_enabled.current_speed < ball_enabled.max_scalar_speed:
+                assert ball_enabled.current_speed > ball_disabled.current_speed
+                assert ball_enabled.current_speed > speed_before
+            else:
+                assert ball_enabled.current_speed >= ball_disabled.current_speed
+                assert ball_enabled.current_speed >= speed_before
+                assert math.isclose(
+                    ball_enabled.current_speed, ball_enabled.max_scalar_speed, rel_tol=1e-5
+                )
+
+            assert abs(ball_enabled.speed_x) <= ball_enabled.max_speed
+            assert abs(ball_enabled.speed_y) <= ball_enabled.max_speed
 
 
 def test_ball_acceleration_top_speed_ceiling_not_inverted():
@@ -409,7 +431,7 @@ def test_ball_acceleration_top_speed_ceiling_not_inverted():
     ball_enabled.speed_y = 15.0
     ball_enabled.check_paddle_collision(paddle)
 
-    assert ball_enabled.current_speed >= ball_disabled.current_speed
+    assert ball_enabled.current_speed > ball_disabled.current_speed
     assert abs(ball_enabled.speed_x) >= abs(ball_disabled.speed_x)
     assert abs(ball_enabled.speed_x) <= ball_enabled.max_speed
 
