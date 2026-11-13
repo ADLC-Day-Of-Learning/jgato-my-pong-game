@@ -56,6 +56,11 @@ class Ball:
         return math.hypot(self.speed_x, self.speed_y)
 
     @property
+    def max_scalar_speed(self) -> float:
+        """Return the maximum achievable scalar speed of the ball."""
+        return math.hypot(self.max_speed, self.max_speed)
+
+    @property
     def rect(self) -> pygame.Rect:
         """Returns the current pygame.Rect bounding box for the ball."""
         return pygame.Rect(int(self.x), int(self.y), self.size, self.size)
@@ -141,13 +146,11 @@ class Ball:
             self.speed_y = self.max_speed if self.speed_y > 0 else -self.max_speed
 
         if self.acceleration_enabled:
-            current_scalar_speed = self.current_speed
-            target_speed = max(
-                current_scalar_speed, speed_before + self.acceleration_increment
-            )
-            target_speed = min(target_speed, self.max_speed)
-            if current_scalar_speed > 0:
-                scale = target_speed / current_scalar_speed
+            post_deflection_speed = self.current_speed
+            target_speed = max(post_deflection_speed, speed_before) + self.acceleration_increment
+            target_speed = min(target_speed, self.max_scalar_speed)
+            if post_deflection_speed > 0:
+                scale = target_speed / post_deflection_speed
                 self.speed_x *= scale
                 self.speed_y *= scale
 

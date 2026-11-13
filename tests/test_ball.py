@@ -268,22 +268,24 @@ def test_ball_paddle_collision_acceleration_enabled_both_paddles():
 
 
 def test_ball_paddle_collision_acceleration_max_speed_cap():
-    """Verify total scalar speed is capped at BALL_MAX_SPEED when acceleration is enabled."""
+    """Verify total scalar speed is capped at harmonized maximum speed when acceleration enabled."""
     ball = Ball(
         acceleration_enabled=True,
-        initial_speed_x=14.9,
-        initial_speed_y=1.0,
+        initial_speed_x=15.0,
+        initial_speed_y=15.0,
         max_speed=15.0,
     )
     paddle = Paddle(x=30, y=250, width=15, height=100)
     ball.x = 35
-    ball.y = 250 + (100 - ball.size) / 2.0
-    ball.speed_x = -14.9
-    ball.speed_y = 1.0
+    # Position ball at paddle edge for maximum deflection (offset = 1.0)
+    ball.y = paddle.y + paddle.height - (ball.size / 2.0)
+    ball.speed_x = -15.0
+    ball.speed_y = 15.0
 
+    expected_max = ball.max_scalar_speed
     assert ball.check_paddle_collision(paddle) is True
-    assert ball.current_speed <= 15.0
-    assert math.isclose(ball.current_speed, 15.0, rel_tol=1e-5)
+    assert ball.current_speed <= expected_max
+    assert math.isclose(ball.current_speed, expected_max, rel_tol=1e-5)
 
 
 def test_ball_acceleration_disabled_preserves_existing_behavior():
@@ -319,3 +321,93 @@ def test_ball_reset_restores_speed_when_acceleration_enabled():
     ball.reset(direction=1)
     assert math.isclose(ball.current_speed, initial_speed, rel_tol=1e-5)
     assert ball.acceleration_enabled is True
+
+
+def test_ball_max_scalar_speed_property():
+    """Verify Ball exposes max_scalar_speed calculated from max_speed."""
+    ball = Ball(max_speed=15.0)
+    expected = math.hypot(15.0, 15.0)
+    assert math.isclose(ball.max_scalar_speed, expected, rel_tol=1e-5)
+
+
+def test_acceleration_strictly_faster_than_standard_across_offsets():
+    """Verify acceleration mode produces higher speed than disabled mode across all offsets."""
+    paddle = Paddle(x=30, y=250, width=15, height=100)
+    for offset_ratio in [-1.0, -0.8, -0.5, -0.3, 0.0, 0.3, 0.5, 0.8, 1.0]:
+        ball_disabled = Ball(acceleration_enabled=False, initial_speed_x=5.0, initial_speed_y=5.0)
+        ball_disabled.x = 35
+        ball_disabled.y = (
+            paddle.y
+            + (paddle.height / 2.0)
+            + (offset_ratio * paddle.height / 2.0)
+            - (ball_disabled.size / 2.0)
+        )
+        ball_disabled.speed_x = -5.0
+        ball_disabled.speed_y = 5.0
+        assert ball_disabled.check_paddle_collision(paddle) is True
+
+        ball_enabled = Ball(acceleration_enabled=True, initial_speed_x=5.0, initial_speed_y=5.0)
+        ball_enabled.x = 35
+        ball_enabled.y = (
+            paddle.y
+            + (paddle.height / 2.0)
+            + (offset_ratio * paddle.height / 2.0)
+            - (ball_enabled.size / 2.0)
+        )
+        ball_enabled.speed_x = -5.0
+        ball_enabled.speed_y = 5.0
+        assert ball_enabled.check_paddle_collision(paddle) is True
+
+        assert ball_enabled.current_speed > ball_disabled.current_speed
+
+
+def test_acceleration_strictly_faster_on_shallow_and_steep_returns():
+    """Verify shallow (0.0) and steep (1.0) returns are strictly faster with acceleration."""
+    paddle = Paddle(x=30, y=250, width=15, height=100)
+    for offset_ratio in [0.0, 1.0]:
+        ball_disabled = Ball(acceleration_enabled=False, initial_speed_x=6.0, initial_speed_y=4.0)
+        ball_disabled.x = 35
+        ball_disabled.y = (
+            paddle.y
+            + (paddle.height / 2.0)
+            + (offset_ratio * paddle.height / 2.0)
+            - (ball_disabled.size / 2.0)
+        )
+        ball_disabled.speed_x = -6.0
+        ball_disabled.speed_y = 4.0
+        assert ball_disabled.check_paddle_collision(paddle) is True
+
+        ball_enabled = Ball(acceleration_enabled=True, initial_speed_x=6.0, initial_speed_y=4.0)
+        ball_enabled.x = 35
+        ball_enabled.y = (
+            paddle.y
+            + (paddle.height / 2.0)
+            + (offset_ratio * paddle.height / 2.0)
+            - (ball_enabled.size / 2.0)
+        )
+        ball_enabled.speed_x = -6.0
+        ball_enabled.speed_y = 4.0
+        assert ball_enabled.check_paddle_collision(paddle) is True
+
+        assert ball_enabled.current_speed > ball_disabled.current_speed
+
+
+def test_acceleration_top_speed_ceiling_not_inverted():
+    """Verify maximum speed ceiling in acceleration mode is >= disabled mode."""
+    paddle = Paddle(x=30, y=250, width=15, height=100)
+    ball_disabled = Ball(acceleration_enabled=False, initial_speed_x=15.0, initial_speed_y=15.0)
+    ball_disabled.x = 35
+    ball_disabled.y = paddle.y + paddle.height - ball_disabled.size
+    ball_disabled.speed_x = -15.0
+    ball_disabled.speed_y = 15.0
+    ball_disabled.check_paddle_collision(paddle)
+
+    ball_enabled = Ball(acceleration_enabled=True, initial_speed_x=15.0, initial_speed_y=15.0)
+    ball_enabled.x = 35
+    ball_enabled.y = paddle.y + paddle.height - ball_enabled.size
+    ball_enabled.speed_x = -15.0
+    ball_enabled.speed_y = 15.0
+    ball_enabled.check_paddle_collision(paddle)
+
+    assert ball_enabled.current_speed >= ball_disabled.current_speed
+    assert abs(ball_enabled.speed_x) >= abs(ball_disabled.speed_x)
